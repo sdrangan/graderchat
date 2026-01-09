@@ -7,6 +7,9 @@ let currentUnitQuestions = null;     // plain text
 let currentUnitQuestionsLatex = null; // latex version
 let currentUnitSolutions = null;     // reference solutions
 let currentUnitNotes = null;         // grading notes
+let currentUnitName = null;          // current unit name
+let currentStudentSolutions = null; // student solutions
+
 //
 // ---------------------------
 //  CHAT SEND BUTTON
@@ -23,27 +26,6 @@ document.getElementById("send-chat").onclick = function () {
         history.scrollTop = history.scrollHeight;
     }
 };
-
-
-//
-// ---------------------------
-//  GRADE BUTTON (dummy for now)
-// ---------------------------
-document.getElementById("grade-button").onclick = function () {
-    const status = document.getElementById("grade-status");
-
-    if (status.classList.contains("status-not-graded")) {
-        status.textContent = "Correct";
-        status.className = "status-correct";
-    } else if (status.classList.contains("status-correct")) {
-        status.textContent = "Incorrect";
-        status.className = "status-incorrect";
-    } else {
-        status.textContent = "Not graded";
-        status.className = "status-not-graded";
-    }
-};
-
 
 //
 // ---------------------------
@@ -71,7 +53,7 @@ document.getElementById("load-student-file").onclick = function () {
         }
 
         // Store student solutions
-        currentStudentSolutions = data.questions;
+        currentStudentSolutions = data.solutions;
 
         // If the unit is already loaded, update the student solution box
         const qIdx = Number(document.getElementById("question-number").value);
@@ -123,6 +105,7 @@ async function loadUnit(unitName) {
     currentUnitQuestionsLatex = data.questions_latex; // latex version
     currentUnitSolutions = data.solutions;          // reference solutions
     currentUnitNotes = data.grading;                // grading notes
+    currentUnitName = unitName;
 
     populateQuestionDropdown(currentUnitQuestions);
 }
@@ -226,4 +209,24 @@ document.getElementById("question-number").addEventListener("change", () => {
     displayQuestion(idx);
 });
 
+// ---------------------------
+//  GRADE CURRENT QUESTION
+// ---------------------------
+async function gradeCurrentQuestion() {
+    const idx = Number(document.getElementById("question-number").value);
+    const studentSolution = document.getElementById("student-solution").value;
+
+    const resp = await fetch("/grade", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            unit: currentUnitName,
+            question_idx: idx,
+            student_solution: studentSolution
+        })
+    });
+
+    const data = await resp.json();
+    console.log("Grade response:", data);
+}
 

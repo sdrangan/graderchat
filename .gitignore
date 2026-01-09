@@ -157,3 +157,6 @@ _minted-*
 
 # Minted cache directory
 _minted*/
+
+# Scratch directory
+scratch/

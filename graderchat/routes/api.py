@@ -1,13 +1,12 @@
 print("LOADING api.py FROM:", __file__)
 
+import os
 from flask import Blueprint, request, jsonify
 from flask import render_template
 
 
-
 class APIController:
-    def __init__(self, llm_client, grader):
-        self.llm_client = llm_client
+    def __init__(self, grader):
         self.grader = grader
 
     def register(self, app):
@@ -24,14 +23,6 @@ class APIController:
             reply = self.llm_client.chat(msg)
             return jsonify({"reply": reply})
 
-        @bp.post("/grade")
-        def grade():
-            data = request.json
-            q = data.get("question", "")
-            s = data.get("solution", "")
-            result = self.grader.grade(q, s)
-            return jsonify(result)
-        
         @bp.post("/load_file")
         def load_file():
             # Loads the student solution file
@@ -70,5 +61,48 @@ class APIController:
                 "solutions": u["solutions"],
                 "grading": u["grading"]
             })
+        
+        @bp.post("/grade")
+        def grade():
+            data = request.json 
+            unit = data["unit"]
+            idx = int(data["question_idx"])
+            student_soln = data["student_solution"]
+
+            u = self.grader.units[unit]
+
+            ref_problem = u["questions_latex"][idx]
+            ref_solution = u["solutions"][idx]
+            grading_notes = u["grading"][idx]
+
+            # Save the grader inputs for debugging
+            fn = os.path.join(self.grader.scratch_dir, f"grade_input_{unit}_{idx}.txt")
+
+            with open(fn, "w") as f:
+                f.write(f"Unit: {unit}\n")
+                f.write(f"Question Index: {idx}\n\n")
+                f.write("=== Reference Problem (LaTeX) ===\n")
+                f.write(ref_problem + "\n\n")
+
+                f.write("=== Reference Solution ===\n")
+                f.write(ref_solution + "\n\n")
+
+                f.write("=== Grading Notes ===\n")
+                f.write(grading_notes + "\n\n")
+
+                f.write("=== Student Solution ===\n")
+                f.write(student_soln + "\n")
+
+            print(f'Wrote {fn}')
+
+            # Call the grader with relevant data
+            self.grader.grade(question_latex=ref_problem, ref_solution=ref_solution, grading_notes=grading_notes, student_soln=student_soln)
+
+            return jsonify({"status": "ok"})
                 
         app.register_blueprint(bp)
+
+        print("=== ROUTES REGISTERED ===")
+        for rule in app.url_map.iter_rules():
+            print(rule)
+        print("==========================")

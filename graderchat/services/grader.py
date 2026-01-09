@@ -1,14 +1,32 @@
 from graderchat.services.parselatex import parse_latex_soln
 import os
+import shutil
 from pathlib import Path
 import json
 import os
 import json
+from openai import OpenAI
 
 class Grader:
-    def __init__(self, questions_root="questions"):
+    def __init__(self, questions_root="questions", scratch_dir="scratch"):
         self.questions_root = questions_root
-        self.units = self._discover_units()
+        self.scratch_dir = scratch_dir
+
+        # Remove old scratch directory if it exists
+        if os.path.exists(self.scratch_dir):
+            shutil.rmtree(self.scratch_dir)
+
+        # Recreate it fresh
+        os.makedirs(self.scratch_dir, exist_ok=True)
+
+        # Discover units
+        self.units = self._discover_units() 
+
+        # Create the OpenAI LLM client
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key is None:
+            raise RuntimeError("Missing OPENAI_API_KEY environment variable")
+        self.client = self.client = OpenAI(api_key=api_key)
 
     def _discover_units(self):
         units = {}
@@ -82,11 +100,102 @@ class Grader:
             raise ValueError("No valid directories units found in '%s'." % self.questions_root)
         return units
 
-    def grade(self, question, solution):
-        return {
-            "status": "correct",   # dummy
-            "explanation": "This is a placeholder."
-        }
+    def grade(self, question_latex, ref_solution, grading_notes, student_soln):
+        # ---------------------------------------------------------
+        # 1. Build the task prompt
+        # ---------------------------------------------------------
+        task = f"""
+            Your task is to grade a student's solution to an engineering problem.
+
+            You must always return a single JSON object with the fields:
+            - "result": "pass", "fail", or "error"
+            - "full_explanation": a detailed explanation
+            - "summary": a concise 2–3 sentence summary
+
+            Follow these steps exactly:
+
+            1. Determine whether the student solution appears to be for a *different* problem.
+            - If misaligned:
+                Return:
+                {{
+                    "result": "error",
+                    "full_explanation": "There appears to be an alignment error. <explanation>",
+                    "summary": "There is an alignment error between the question and the student solution."
+                }}
+            Do not attempt further grading.
+
+            2. If aligned:
+            - Compare the student solution to the reference solution.
+            - Use the grading notes as guidance.
+            - Provide a detailed step-by-step reasoning in "full_explanation".
+            - Provide a concise 2–3 sentence summary in "summary".
+
+            3. If correct:
+                {{
+                    "result": "pass",
+                    "full_explanation": "<explanation>",
+                    "summary": "The solution is correct. All required reasoning steps match the reference."
+                }}
+
+            4. If incorrect:
+                {{
+                    "result": "fail",
+                    "full_explanation": "<explanation of what is correct and what is wrong>",
+                    "summary": "The solution contains errors. The main issues are summarized concisely here."
+                }}
+
+            -------------------------
+            QUESTION (LaTeX):
+            {question_latex}
+
+            REFERENCE SOLUTION:
+            {ref_solution}
+
+            GRADING NOTES:
+            {grading_notes}
+
+            STUDENT SOLUTION:
+            {student_soln}
+            """
+
+        # ---------------------------------------------------------
+        # 2. Write task prompt to scratch/task.txt
+        # ---------------------------------------------------------
+        task_path = os.path.join(self.scratch_dir, "task.txt")
+        with open(task_path, "w") as f:
+            f.write(task)
+
+        # ---------------------------------------------------------
+        # 3. Call OpenAI
+        # ---------------------------------------------------------
+        print('Calling OpenAI for grading...')
+        response = self.client.chat.completions.create(
+            model="gpt-4.1-mini",
+            temperature=0,
+            messages=[{"role": "user", "content": task}]
+        )
+
+        content = response.choices[0].message.content
+
+        # ---------------------------------------------------------
+        # 4. Save raw response to scratch/resp.json
+        # ---------------------------------------------------------
+        resp_path = os.path.join(self.scratch_dir, "resp.json")
+        with open(resp_path, "w") as f:
+            f.write(content)
+        print(f'Grader response written to {resp_path}')
+
+        # ---------------------------------------------------------
+        # 5. Return parsed JSON to the caller
+        # ---------------------------------------------------------
+        try:
+            return json.loads(content)
+        except Exception:
+            return {
+                "result": "error",
+                "full_explanation": "Model returned invalid JSON.",
+                "summary": "The model output could not be parsed."
+            }
     
     def load_solution_file(self, text):
 
