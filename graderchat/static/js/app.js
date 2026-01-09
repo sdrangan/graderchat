@@ -10,22 +10,6 @@ let currentUnitNotes = null;         // grading notes
 let currentUnitName = null;          // current unit name
 let currentStudentSolutions = null; // student solutions
 
-//
-// ---------------------------
-//  CHAT SEND BUTTON
-// ---------------------------
-document.getElementById("send-chat").onclick = function () {
-    const input = document.getElementById("chat-input");
-    const history = document.getElementById("chat-history");
-
-    if (input.value.trim() !== "") {
-        const msg = document.createElement("div");
-        msg.textContent = "You: " + input.value;
-        history.appendChild(msg);
-        input.value = "";
-        history.scrollTop = history.scrollHeight;
-    }
-};
 
 //
 // ---------------------------
@@ -130,13 +114,12 @@ function displayQuestion(idx) {
     }
 
     // Reset grading UI
-    document.getElementById("explanation").textContent = "No explanation yet.";
-    document.getElementById("grade-status").textContent = "Not graded";
+    document.getElementById("full-explanation-box").textContent = "Not yet graded.  No explanation yet.";
+    document.getElementById("summary-box").textContent = "Not yet graded. No summary yet.";
     document.getElementById("grade-status").className = "status-not-graded";
 }
 
 
-//
 // ---------------------------
 //  DIVIDER DRAGGING
 // ---------------------------
@@ -216,6 +199,10 @@ async function gradeCurrentQuestion() {
     const idx = Number(document.getElementById("question-number").value);
     const studentSolution = document.getElementById("student-solution").value;
 
+    const gradeBtn = document.getElementById("grade-button");
+    gradeBtn.disabled = true;
+    gradeBtn.textContent = "Grading...";
+
     const resp = await fetch("/grade", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -225,8 +212,24 @@ async function gradeCurrentQuestion() {
             student_solution: studentSolution
         })
     });
+    const data = await resp.json();  
 
-    const data = await resp.json();
-    console.log("Grade response:", data);
+    
+    gradeBtn.disabled = false;
+    gradeBtn.textContent = "Grade";
+
+
+    document.getElementById("grade-status").textContent =
+        data.result === "pass" ? "Correct" :
+        data.result === "fail" ? "Incorrect" :
+        "Error";
+
+    document.getElementById("grade-status").className =
+        data.result === "pass" ? "status-correct" :
+        data.result === "fail" ? "status-incorrect" :
+        "status-error";
+
+    document.getElementById("summary-box").textContent = data.summary;
+    document.getElementById("full-explanation-box").textContent = data.full_explanation;
 }
 

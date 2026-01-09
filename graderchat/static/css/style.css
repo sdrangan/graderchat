@@ -107,15 +107,6 @@ textarea {
     background: #fafafa;
 }
 
-#chat-input-panel {
-    display: flex;
-    gap: 8px;
-}
-
-#chat-input {
-    flex: 1;
-    padding: 6px;
-}
 
 /* ------------------------------
    GRADE STATUS
@@ -142,6 +133,12 @@ textarea {
     background: #f7c5c5;
     color: #7a2d2d;
 }
+
+.status-error {
+    color: orange;
+    font-weight: bold;
+}
+
 
 /* ------------------------------
    TEXT BLOCKS
@@ -175,3 +172,8 @@ textarea {
     resize: vertical; /* optional: allow manual resizing */
 }
 
+#summary-box,
+#full-explanation-box {
+    white-space: pre-wrap;
+    overflow-y: auto;   /* optional but recommended */
+}

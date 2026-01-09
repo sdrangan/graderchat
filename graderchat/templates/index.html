@@ -45,8 +45,9 @@
 
         <!-- Grade Button -->
         <div class="panel">
-            <button onclick="gradeCurrentQuestion()">Grade</button>
+            <button id="grade-button" onclick="gradeCurrentQuestion()">Grade</button>
         </div>
+
 
     </div>
 
@@ -54,27 +55,22 @@
     <div class="right-column">
 
         <!-- Grade Status -->
-        <div class="panel">
-            <h3>Grade</h3>
-            <div id="grade-status" class="status-not-graded">Not graded</div>
+        <div id="grade-status" class="status-not-graded">
+            Not graded
         </div>
 
-        <!-- Explanation -->
-        <div class="panel">
-            <h3>Explanation</h3>
-            <div id="explanation">No explanation yet.</div>
-        </div>
+        <div id="grading-output">
 
-        <!-- Chat History -->
-        <div class="panel">
-            <h3>Chat</h3>
-            <div id="chat-history" class="scrollable"></div>
-        </div>
+            <h3>Summary</h3>
+            <div id="summary-box" class="panel">
+                No summary yet.
+            </div>
 
-        <!-- Chat Input -->
-        <div class="panel chat-input-panel">
-            <input type="text" id="chat-input" placeholder="Ask a question...">
-            <button id="send-chat">Send</button>
+            <h3>Full Explanation</h3>
+            <div id="full-explanation-box" class="panel">
+                No explanation yet.
+            </div>
+
         </div>
 
     </div>

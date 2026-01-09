@@ -96,9 +96,13 @@ class APIController:
             print(f'Wrote {fn}')
 
             # Call the grader with relevant data
-            self.grader.grade(question_latex=ref_problem, ref_solution=ref_solution, grading_notes=grading_notes, student_soln=student_soln)
+            result = self.grader.grade(
+                question_latex=ref_problem, 
+                ref_solution=ref_solution, 
+                grading_notes=grading_notes, 
+                student_soln=student_soln)
 
-            return jsonify({"status": "ok"})
+            return jsonify(result)
                 
         app.register_blueprint(bp)
 
